@@ -1,0 +1,1074 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>도서관 리듬게임</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root { --paper:#fff8ec; --ink:#3b2a1e; --wood:#7a4a2a; --accent:#f2b544; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; overflow:hidden; background:#1b120c; color:var(--ink);
+    font-family:'Jua','Malgun Gothic',sans-serif; user-select:none; -webkit-user-select:none; touch-action:none; }
+  canvas { display:block; width:100vw; height:100vh; }
+  .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; pointer-events:none; }
+  .overlay > * { pointer-events:auto; }
+  .dim { background:rgba(0,0,0,.55); pointer-events:auto; }
+  .hidden { display:none !important; }
+  .panel { background:var(--paper); border:4px solid var(--wood); border-radius:18px; padding:22px 24px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5); max-width:min(94vw,560px); max-height:92vh; overflow:auto; }
+  .panel.wide { max-width:min(94vw,860px); }
+  .center { text-align:center; }
+  h2 { font-weight:normal; font-size:28px; margin-bottom:4px; }
+  .logo { font-size:48px; color:var(--wood); }
+  .sub { color:#8a6a50; font-size:17px; margin:6px 0 4px; }
+  .hint { color:#a58468; font-size:15px; margin-top:14px; }
+  .btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:16px; }
+  .btns.col { flex-direction:column; }
+  button { font-family:inherit; font-size:20px; padding:10px 22px; border-radius:12px; border:3px solid var(--wood);
+    background:var(--accent); color:var(--ink); cursor:pointer; box-shadow:0 4px 0 var(--wood); }
+  button:active { transform:translateY(3px); box-shadow:0 1px 0 var(--wood); }
+  button.ghost { background:#fff; }
+  button.small { font-size:16px; padding:6px 14px; }
+  #grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:14px; }
+  @media (max-width:640px) { #grid { grid-template-columns:repeat(2,1fr); } }
+  .card { background:#fff; border:3px solid var(--c); box-shadow:0 4px 0 var(--c); border-radius:12px; padding:10px 6px;
+    display:flex; flex-direction:column; gap:2px; align-items:center; font-size:14px; }
+  .card .code { font-size:28px; color:var(--c); line-height:1.1; }
+  .card .nm { font-size:18px; }
+  .card .ds { font-size:12px; color:#8a6a50; }
+  .card .bt { font-size:13px; margin-top:4px; }
+  .card .lv { font-size:12px; color:#b58a5a; }
+  .card:disabled { filter:grayscale(1); opacity:.45; cursor:not-allowed; }
+  #dialog { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); width:min(94vw,760px);
+    background:var(--paper); border:4px solid var(--wood); border-radius:16px; padding:22px 22px 26px; min-height:112px; cursor:pointer; }
+  #dlgName { position:absolute; top:-18px; left:16px; background:var(--wood); color:#fff; padding:3px 14px; border-radius:10px; font-size:18px; }
+  #dlgName.me { background:#4fae8f; }
+  #dlgText { font-size:21px; line-height:1.55; }
+  #dlgNext { position:absolute; right:16px; bottom:6px; color:var(--wood); animation:blink 1s infinite; }
+  @keyframes blink { 50% { opacity:.2; } }
+  #skipBtn { position:fixed; top:14px; right:14px; }
+  #pauseBtn { position:fixed; top:56px; right:14px; }
+  #resRank { font-size:84px; line-height:1; margin:6px 0; }
+  #resStats, .statgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:10px 0; }
+  #resStats div, .statgrid div { background:#fff; border:2px solid #e3cfb2; border-radius:10px; padding:6px; font-size:14px; color:#8a6a50; }
+  #resStats b, .statgrid b { display:block; font-weight:normal; font-size:22px; color:var(--ink); }
+  .bubble { background:#fff; border:2px solid var(--wood); border-radius:12px; padding:10px 14px; font-size:18px; text-align:left; }
+  .bubble b { font-weight:normal; color:#fff; background:var(--wood); border-radius:8px; padding:1px 8px; margin-right:6px; }
+  #endBadge { font-size:24px; }
+  .record { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin:10px 0; }
+  .record div { background:#fff; border:2px solid var(--c); border-radius:8px; padding:4px 2px; font-size:13px; color:#8a6a50; }
+  .record b { display:block; font-weight:normal; font-size:20px; }
+  @media (max-width:480px) { .record div { font-size:11px; } }
+  .tiers { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:8px 0; }
+  .tiers span { border:2px solid #e3cfb2; border-radius:10px; padding:4px 10px; font-size:14px; color:#a58468; background:#fff; }
+  .tiers span.on { border-color:var(--wood); background:var(--accent); color:var(--ink); }
+  .challenge { color:#d63a46; font-size:17px; margin-top:6px; }
+  .menu { margin-top:18px; padding-top:12px; border-top:2px dashed #e3cfb2; }
+  .menu-title { font-size:17px; color:#8a6a50; margin-bottom:8px; display:flex; gap:8px; align-items:center; justify-content:center; }
+  .menu-btns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .menu-lock { font-size:13px; color:#a58468; margin-top:8px; }
+  button:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; transform:none; }
+  .warn { background:#fff1f1; border:2px solid #e8a0a6; color:#b3343f; border-radius:10px; padding:8px 12px; font-size:14px; margin-top:12px; line-height:1.5; }
+  .warn b { font-weight:normal; text-decoration:underline; }
+  .choices { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  @media (max-width:520px) { .choices { grid-template-columns:1fr; } }
+  .choice { border:2px solid #e3cfb2; border-radius:12px; padding:10px; background:#fffdf8; display:flex; flex-direction:column; gap:8px; align-items:center; }
+  .choice-head { font-size:17px; }
+  .choice .warn { margin-top:0; }
+  .keep { background:#effaf4; border:2px solid #9fd6b8; color:#2c7a52; border-radius:10px; padding:8px 12px; font-size:14px; line-height:1.5; }
+  .funnote { margin-top:10px; }
+  button.danger { background:#e35d6a; color:#fff; }
+  .badge { display:inline-block; color:#fff; background:var(--c); border-radius:10px; padding:2px 12px; font-size:18px; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="title" class="overlay">
+  <div class="panel center">
+    <div class="logo">📚 도서관 리듬게임</div>
+    <p class="sub">리듬에 맞춰 책을 제자리에 꽂아요!</p>
+    <div class="btns">
+      <button id="btnStart">도서관 들어가기</button>
+    </div>
+    <div class="menu">
+      <div class="menu-title">📋 목록</div>
+      <div class="menu-btns">
+        <button class="mGrade ghost small">🏅 내 등급 보기</button>
+        <button class="mShelf ghost small">📚 서가 목록 보기</button>
+      </div>
+      <p class="menu-lock">🔒 '내 등급 보기'는 10개 서가를 모두 클리어하면 열려요</p>
+    </div>
+    <p class="hint">조작: ← ↓ → 방향키 &nbsp;|&nbsp; 휴대폰은 화면 터치</p>
+  </div>
+</div>
+
+<div id="dialog" class="hidden">
+  <div id="dlgName">사서</div>
+  <div id="dlgText"></div>
+  <div id="dlgNext">▼</div>
+</div>
+<button id="skipBtn" class="small ghost hidden">건너뛰기 ⏭</button>
+
+<div id="select" class="overlay hidden">
+  <div class="panel wide center">
+    <h2>어느 서가를 정리할까요?</h2>
+    <p class="sub">한국십진분류법(KDC) · 000부터 순서대로 열려요</p>
+    <p id="funNote" class="keep funnote hidden">🎮 재미 모드: 여기서 하는 플레이는 기록·등급에 반영되지 않아요.<br>등급을 바꾸려면 '내 등급 보기' → '처음부터 다시 하기'를 눌러요.</p>
+    <div id="grid"></div>
+    <div class="menu">
+      <div class="menu-title">📋 목록 <button class="mHome ghost small">🏠 처음 화면</button></div>
+      <div class="menu-btns">
+        <button class="mGrade ghost small">🏅 내 등급 보기</button>
+      </div>
+      <p class="menu-lock">🔒 '내 등급 보기'는 10개 서가를 모두 클리어하면 열려요</p>
+    </div>
+  </div>
+</div>
+
+<button id="pauseBtn" class="small ghost hidden">⏸ 멈춤</button>
+<div id="pause" class="overlay dim hidden">
+  <div class="panel center">
+    <h2>잠깐 쉬는 중 ☕</h2>
+    <div class="btns col">
+      <button id="btnResume">계속하기</button>
+      <button id="btnRetry2" class="ghost">처음부터</button>
+      <button id="btnQuit" class="ghost">서가 목록</button>
+    </div>
+  </div>
+</div>
+
+<div id="ending" class="overlay hidden">
+  <div class="panel center">
+    <div id="endLogo" class="logo">🎉</div>
+    <h2 id="endHead">모든 서가 정리 완료!</h2>
+    <p id="endSub" class="sub">000 총류부터 900 역사까지 모든 책이 제자리를 찾았어요</p>
+    <div id="endBadge" class="bubble" style="text-align:center;margin:12px 0"></div>
+    <div id="endStats"></div>
+    <div id="endRecord" class="record"></div>
+    <div id="endTiers" class="tiers"></div>
+    <p id="endChallenge" class="challenge"></p>
+    <div class="choices">
+      <div class="choice">
+        <div class="choice-head">🏅 등급을 바꾸고 싶다면</div>
+        <button id="btnRestart">처음부터 다시 하기</button>
+        <p class="warn">⚠️ 모든 서가 기록과 등급이 <b>초기화</b>되고 000부터 새로 도전해요</p>
+      </div>
+      <div class="choice">
+        <div class="choice-head">🎮 그냥 재미로 더 하고 싶다면</div>
+        <button id="btnEndList" class="ghost">다시 하기</button>
+        <p class="keep">✅ 기록과 등급은 그대로! 원하는 서가를 자유롭게 해요 (점수는 기록되지 않아요)</p>
+      </div>
+    </div>
+    <div class="btns"><button class="mHome ghost small">🏠 처음 화면</button></div>
+  </div>
+</div>
+
+<div id="confirm" class="overlay dim hidden">
+  <div class="panel center">
+    <div class="logo">⚠️</div>
+    <h2>기록이 초기화돼요!</h2>
+    <p class="sub" style="margin:10px 0 4px">지금까지의 <b>모든 서가 기록과 등급이 지워지고</b><br>000 총류부터 새로 도전해요.<br>지운 기록은 되돌릴 수 없어요. 계속할까요?</p>
+    <div class="btns">
+      <button id="btnConfirmYes" class="danger">초기화하고 도전하기</button>
+      <button id="btnConfirmNo" class="ghost">취소</button>
+    </div>
+  </div>
+</div>
+
+<div id="result" class="overlay hidden">
+  <div class="panel center">
+    <div id="resTitle"></div>
+    <div id="resRank"></div>
+    <div id="resStats"></div>
+    <div id="resSay" class="bubble"></div>
+    <div class="btns">
+      <button id="btnRetry" class="ghost">다시 하기</button>
+      <button id="btnNext">다음 서가로 ▶</button>
+      <button id="btnList" class="ghost">서가 목록</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ===================== 기본 설정 =====================
+const STAGES = [
+  { code:'000', name:'총류',     desc:'백과사전·신문·도서관',  color:'#7d8ca3' },
+  { code:'100', name:'철학',     desc:'철학·심리학·윤리',      color:'#9b5de5' },
+  { code:'200', name:'종교',     desc:'불교·기독교·신화',      color:'#e9883a' },
+  { code:'300', name:'사회과학', desc:'경제·법·교육',          color:'#2a9d8f' },
+  { code:'400', name:'자연과학', desc:'수학·물리·생물',        color:'#43aa5b' },
+  { code:'500', name:'기술과학', desc:'의학·공학·요리',        color:'#4a6fa5' },
+  { code:'600', name:'예술',     desc:'미술·음악·스포츠',      color:'#e04f9e' },
+  { code:'700', name:'언어',     desc:'국어·영어·일본어',      color:'#1a9fd6' },
+  { code:'800', name:'문학',     desc:'소설·시·수필',          color:'#d63a46' },
+  { code:'900', name:'역사',     desc:'한국사·세계사·지리',    color:'#a8641f' },
+];
+const KEYS = ['ArrowLeft','ArrowDown','ArrowRight'];   // 방향키 왼쪽 · 아래 · 오른쪽
+const KEYLABEL = ['←','↓','→'];
+const LANES = 3, MID = (LANES - 1) / 2;               // 레인 3줄, 가운데 = 1
+const PERF = 0.065, GOOD = 0.135, WIN = 0.17;   // 판정 범위(초)
+const FONT = '"Jua","Malgun Gothic",sans-serif';
+const SAVEKEY = 'seoga-rhythm-v1';
+const $ = id => document.getElementById(id);
+
+const SCRIPT = [
+  ['사서', '어서 와요! 창파도서관에 온 걸 환영해요. 😊'],
+  ['나',   '안녕하세요! 와, 책이 정말 많네요.'],
+  ['사서', '그런데… 큰일이 났어요. 반납된 책들이 전부 뒤죽박죽 섞여 버렸거든요. 😥'],
+  ['사서', '혹시 책 정리를 도와줄 수 있나요?'],
+  ['나',   '네! 제가 도와드릴게요!'],
+  ['사서', '고마워요! 우리 도서관은 한국십진분류법(KDC)으로 책을 정리해요.'],
+  ['사서', '000 총류부터 900 역사까지 서가가 10개 있어요. 뒤로 갈수록 책이 많아져서 어려워요!'],
+  ['사서', '책이 다가오면 박자에 맞춰 ← ↓ → 방향키를 눌러 꽂아 주세요. (휴대폰은 화면 터치!)'],
+  ['사서', '길게 이어진 책은 끝날 때까지 꾹 누르고 있어야 해요. 그럼 부탁해요!'],
+  ['나',   '좋아요, 서가로 가 볼게요!'],
+];
+
+let save = { unlocked:0, best:{} };
+try { const s = JSON.parse(localStorage.getItem(SAVEKEY)); if (s && typeof s.unlocked === 'number' && s.best) save = s; } catch (e) {}
+function persist() { try { localStorage.setItem(SAVEKEY, JSON.stringify(save)); } catch (e) {} }
+
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hx(h) { h = h.replace('#',''); return [0,2,4].map(i => parseInt(h.slice(i,i+2),16)); }
+function mix(a, b, k) { const A = hx(a), B = hx(b); return 'rgb(' + A.map((v,i) => Math.round(v + (B[i]-v)*k)).join(',') + ')'; }
+function hexA(h, a) { const c = hx(h); return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+
+// ===================== 소리 (WebAudio로 직접 만듦) =====================
+let AC = null, master, noiseBuf;
+function initAudio() {
+  if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  master = AC.createGain(); master.gain.value = 0.55; master.connect(AC.destination);
+  noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.5, AC.sampleRate);
+  const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
+}
+function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t+a); g.gain.exponentialRampToValueAtTime(0.0001, t+a+d); }
+function tone(t, type, freq, dur, vol, filt) {
+  const o = AC.createOscillator(); o.type = type; o.frequency.setValueAtTime(freq, t);
+  const g = AC.createGain(); env(g, t, 0.005, vol, dur);
+  let n = o; if (filt) { const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = filt; o.connect(f); n = f; }
+  n.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.05);
+}
+function noise(t, dur, type, freq, vol) {
+  const s = AC.createBufferSource(); s.buffer = noiseBuf;
+  const f = AC.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+  const g = AC.createGain(); env(g, t, 0.002, vol, dur);
+  s.connect(f).connect(g).connect(master); s.start(t); s.stop(t + dur + 0.05);
+}
+function kick(t) { const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(42, t+0.15); env(g, t, 0.003, 0.9, 0.25); o.connect(g).connect(master); o.start(t); o.stop(t+0.3); }
+function snare(t) { noise(t, 0.16, 'bandpass', 1800, 0.45); tone(t, 'triangle', 190, 0.1, 0.2); }
+function hat(t, v) { noise(t, 0.04, 'highpass', 7000, v); }
+function stick(t, acc) { noise(t, 0.05, 'highpass', 3000, acc ? 0.4 : 0.25); tone(t, 'square', acc ? 1600 : 1200, 0.03, 0.06); }
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+
+// ===================== 잔잔한 배경음악 (처음 화면 · 대화 · 서가 목록 · 결과) =====================
+const BGM = { gain:null, on:false, next:0, step:0 };
+const BGM_TEMPO = 72;                                                     // 느린 빠르기
+const BGM_CHORDS = [[60,64,67,71], [57,60,64,67], [53,57,60,64], [55,59,62,65]];   // C△7 → Am7 → F△7 → G7
+const BGM_ARP = [0, 2, 1, 3, 2, 1, 3, 2];                                 // 오르골처럼 화음을 하나씩
+function bgmTone(T, type, freq, dur, vol) {
+  const o = AC.createOscillator(); o.type = type; o.frequency.setValueAtTime(freq, T);
+  const g = AC.createGain(); g.gain.setValueAtTime(0.0001, T);
+  g.gain.exponentialRampToValueAtTime(vol, T + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, T + dur);
+  o.connect(g).connect(BGM.gain); o.start(T); o.stop(T + dur + 0.05);
+}
+function bgmFade(to, sec) {
+  const g = BGM.gain.gain, now = AC.currentTime;
+  g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(to, now + sec);
+}
+function bgmStart() {
+  initAudio();
+  if (!BGM.gain) { BGM.gain = AC.createGain(); BGM.gain.gain.value = 0; BGM.gain.connect(master); }
+  if (BGM.on) return;
+  BGM.on = true; bgmFade(1, 2);
+}
+function bgmStop() { if (!BGM.on) return; BGM.on = false; bgmFade(0, 0.6); }
+function bgmTick() {
+  if (!AC || !BGM.on || AC.state !== 'running') return;
+  const eighth = 60 / BGM_TEMPO / 2, bar = eighth*8;
+  if (BGM.next < AC.currentTime - 0.05) BGM.next = AC.currentTime + 0.05;   // 탭을 다녀왔을 때 밀린 음 건너뛰기
+  while (BGM.next < AC.currentTime + 0.3) {
+    const T = BGM.next, s = BGM.step % 8, ch = BGM_CHORDS[Math.floor(BGM.step / 8) % 4];
+    if (s === 0) {
+      bgmTone(T, 'sine', mtof(ch[0] - 24), bar*1.05, 0.11);                       // 낮은 베이스
+      ch.forEach(m => bgmTone(T, 'triangle', mtof(m - 12), bar*1.1, 0.018));      // 부드러운 화음
+    }
+    if (s !== 5 && s !== 7) bgmTone(T, 'sine', mtof(ch[BGM_ARP[s]] + 12), 1.6, 0.05);   // 오르골 소리
+    if (s === 4 && Math.floor(BGM.step / 8) % 2 === 1) bgmTone(T, 'sine', mtof(ch[3] + 24), 2.2, 0.025);  // 반짝
+    BGM.next += eighth; BGM.step++;
+  }
+}
+
+// ===================== 노래와 채보 만들기 =====================
+const PROGS = [ [[0,0],[9,1],[5,0],[7,0]], [[0,1],[8,0],[3,0],[10,0]], [[0,0],[5,0],[9,1],[7,0]], [[0,1],[5,1],[8,0],[7,0]] ];
+
+// 난이도: 서가 2개씩 한 묶음 (000·100 / 200·300 / 400·500 / 600·700 / 800·900)
+// 같은 묶음 안에서는 두 번째 서가가 아주 조금만 더 어려워요.
+function levelOf(i) { return Math.floor(i/2) + (i % 2)*0.25; }   // 0, 0.25, 1, 1.25 … 4, 4.25
+
+function buildSong(i) {
+  const lv = levelOf(i);
+  const bpm = Math.round(84 + lv*12), beat = 60/bpm, bar = beat*4;   // 84 → 135 BPM
+  const BARS = Math.round(35 / bar);   // 어느 단계든 약 35초
+  const root = 43 + (i*5) % 12;
+  const prog = PROGS[i % 4];
+  const chordAt = b => { const [o, mn] = prog[b % 4]; return [o > 6 ? o - 12 : o, mn]; };
+  const ev = [];
+  for (let k = 0; k < 4; k++) ev.push({ t: -bar + k*beat, f: T => stick(T, k === 0) });
+  for (let b = 0; b < BARS; b++) {
+    const [off, mn] = chordAt(b), r = root + off, third = mn ? 3 : 4, bt = b*bar;
+    ev.push({ t: bt, f: T => [r+12, r+12+third, r+19].forEach(m => tone(T, 'sine', mtof(m+12), bar*0.9, 0.045)) });
+    for (let k = 0; k < 4; k++) {
+      const tt = bt + k*beat;
+      if (k === 0 || k === 2) ev.push({ t: tt, f: kick });
+      if (k === 1 || k === 3) ev.push({ t: tt, f: snare });
+    }
+    if (i >= 3) ev.push({ t: bt + 2.5*beat, f: kick });
+    if (i >= 7) ev.push({ t: bt + 1.5*beat, f: kick });
+    for (let e = 0; e < 8; e++) {
+      const tt = bt + e*beat/2;
+      ev.push({ t: tt, f: T => hat(T, e % 2 ? 0.06 : 0.11) });
+      if (i >= 6) ev.push({ t: tt + beat/4, f: T => hat(T, 0.04) });
+      if (i >= 3 || e % 2 === 0) { const m = r + (e % 4 === 3 ? 12 : 0); ev.push({ t: tt, f: T => tone(T, 'sawtooth', mtof(m), beat*0.4, 0.15, 700) }); }
+    }
+  }
+  const [o0] = chordAt(0);
+  ev.push({ t: BARS*bar, f: T => { kick(T); noise(T, 1.2, 'highpass', 5000, 0.2); [12,16,19,24].forEach(m => tone(T, 'triangle', mtof(root+o0+m), 1.6, 0.08)); } });
+  ev.sort((a, b) => a.t - b.t);
+  const notes = buildChart(i, beat, BARS);
+  const lastEnd = notes.reduce((m, n) => Math.max(m, n.t + n.dur), 0);
+  return { bpm, beat, bar, BARS, root, chordAt, ev, notes, lastEnd, approach: 1.9 - lv*0.17 };
+}
+
+function buildChart(i, beat, BARS) {
+  const rnd = rng(1234 + i*101);
+  const st = STAGES[i];
+  const lv = levelOf(i);
+  const res = lv < 1 ? 1 : 2;                                  // 000·100은 4분음표만, 그 뒤로 8분음표
+  const pBeat = Math.min(0.45 + lv*0.08, 0.85);               // 박자마다 책이 나올 확률
+  const pE = lv < 1 ? 0 : 0.08 + (lv - 1)*0.08;               // 박자 사이(8분) 책
+  const pS = 0;                                                // 16분음표는 없음
+  const pChord = lv < 2 ? 0 : 0.04 + (lv - 2)*0.03;           // 동시치기: 400부터
+  const pHold = lv < 1 ? 0 : 0.06 + (lv - 1)*0.01;            // 긴 책: 200부터
+  const notes = [], free = [-9,-9,-9]; let last = -1;
+  const holdsAt = t => notes.filter(n => n.dur > 0 && n.t <= t + 1e-6 && n.t + n.dur >= t - 1e-6).length;
+  const mk = (t, lane, dur) => {
+    const v = (rnd() - 0.5) * 0.5;
+    notes.push({ t, lane, dur,
+      color: mix(st.color, v > 0 ? '#ffffff' : '#000000', Math.abs(v)),
+      label: String(i*100 + Math.floor(rnd()*100)).padStart(3,'0') + '.' + Math.floor(rnd()*10) });
+    free[lane] = dur > 0 ? t + dur + beat*0.5 : t;
+  };
+  for (let b = 0; b < BARS; b++) {
+    const intro = b < 2 ? 0.55 : 1;
+    for (let k = 0; k < 4*res; k++) {
+      const t = (b*4 + k/res) * beat, sub = k % res;
+      let p = sub === 0 ? pBeat : (sub*2 === res ? pE : pS);
+      if (k === 0) p = 1;
+      if (rnd() > p*intro) continue;
+      if (holdsAt(t) >= 2) continue;
+      let av = [0,1,2].filter(l => free[l] < t - 1e-4);
+      if (!av.length) continue;
+      if (av.length > 1 && lv < 2) av = av.filter(l => l !== last);
+      const lane = av[Math.floor(rnd()*av.length)];
+      if (sub === 0 && b < BARS-1 && rnd() < pHold) mk(t, lane, beat*(rnd() < 0.6 ? 1 : 2));
+      else {
+        mk(t, lane, 0);
+        if (sub === 0 && holdsAt(t) === 0 && rnd() < pChord) {
+          const av2 = [0,1,2].filter(l => l !== lane && free[l] < t - 1e-4);
+          if (av2.length) mk(t, av2[Math.floor(rnd()*av2.length)], 0);
+        }
+      }
+      last = lane;
+    }
+  }
+  notes.sort((a, b) => a.t - b.t || a.lane - b.lane);
+  return notes;
+}
+
+// ===================== 화면 =====================
+const cv = $('cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1, L = {}, libBg = null, aisleBg = null;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
+  const laneW = Math.min(W*0.25, H*0.2, 170);
+  const judgeY = H*0.8, horizonY = H*0.34;
+  const HY = (4*horizonY - judgeY) / 3, F = judgeY - HY;
+  L = { laneW, judgeY, horizonY, HY, F, cx: W/2, LW: laneW / F };
+  libBg = null; aisleBg = null;
+}
+addEventListener('resize', resize); resize();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { libBg = null; });
+
+function mk() { const c = document.createElement('canvas'); c.width = Math.round(W*DPR); c.height = Math.round(H*DPR); const g = c.getContext('2d'); g.setTransform(DPR,0,0,DPR,0,0); return c; }
+function P(X, Y, Z) { return [L.cx + X*L.F/Z, L.HY - Y*L.F/Z]; }   // 3D → 화면 좌표
+function poly(g, pts, fill) { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < pts.length; k++) g.lineTo(pts[k][0], pts[k][1]); g.closePath(); g.fillStyle = fill; g.fill(); }
+function rr(g, x, y, w, h, r) { r = Math.max(0, Math.min(r, w/2, h/2)); g.beginPath(); g.moveTo(x+r, y); g.arcTo(x+w, y, x+w, y+h, r); g.arcTo(x+w, y+h, x, y+h, r); g.arcTo(x, y+h, x, y, r); g.arcTo(x, y, x+w, y, r); g.closePath(); }
+function circle(g, x, y, r) { g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fill(); }
+const BOOKPAL = ['#c0392b','#2e86de','#27ae60','#f39c12','#8e44ad','#16a085','#d35400','#34495e','#e84393','#b8860b','#6d4c41'];
+
+// ----- 도서관 옆모습 배경 -----
+function bookcase(g, x, y, w, h, rnd) {
+  g.fillStyle = '#6b3f22'; g.fillRect(x, y, w, h);
+  const pad = Math.max(6, w*0.025), rows = 4, rowH = (h - pad) / rows;
+  g.fillStyle = '#3a2214'; g.fillRect(x+pad, y+pad, w-pad*2, h-pad*2);
+  for (let r = 0; r < rows; r++) {
+    const by = y + pad + (r+1)*rowH - pad;
+    let bx = x + pad + 2;
+    while (bx < x + w - pad - 6) {
+      const bw = Math.max(5, rowH*(0.09 + rnd()*0.08)), bh = (rowH - pad)*(0.62 + rnd()*0.33);
+      if (bx + bw > x + w - pad - 2) break;
+      if (rnd() < 0.12) { // 기울어진 책
+        g.save(); g.translate(bx, by); g.rotate(-0.18); g.fillStyle = BOOKPAL[Math.floor(rnd()*BOOKPAL.length)]; g.fillRect(0, -bh, bw, bh); g.restore(); bx += bw*1.6; continue;
+      }
+      g.fillStyle = BOOKPAL[Math.floor(rnd()*BOOKPAL.length)]; g.fillRect(bx, by - bh, bw, bh);
+      g.fillStyle = 'rgba(255,230,160,.6)'; g.fillRect(bx, by - bh*0.85, bw, Math.max(1, bh*0.04));
+      bx += bw + 1;
+    }
+    g.fillStyle = '#7d4a28'; g.fillRect(x, by, w, pad);
+  }
+}
+function buildLib() {
+  const c = mk(), g = c.getContext('2d'), rnd = rng(7), fy = H*0.8;
+  let gr = g.createLinearGradient(0, 0, 0, fy); gr.addColorStop(0, '#e4c99b'); gr.addColorStop(1, '#f5e6c8');
+  g.fillStyle = gr; g.fillRect(0, 0, W, fy);
+  // 창문
+  const wx = W*0.6, ww = W*0.2, wy = H*0.07, wh = H*0.3;
+  const arch = (x, y, w, h) => { g.beginPath(); g.moveTo(x, y+h); g.lineTo(x, y+w/2); g.arc(x+w/2, y+w/2, w/2, Math.PI, 0); g.lineTo(x+w, y+h); g.closePath(); };
+  g.fillStyle = '#6b3f22'; arch(wx-8, wy-8, ww+16, wh+16); g.fill();
+  gr = g.createLinearGradient(0, wy, 0, wy+wh); gr.addColorStop(0, '#9fd3ff'); gr.addColorStop(1, '#fff1cf');
+  g.fillStyle = gr; arch(wx, wy, ww, wh); g.fill();
+  g.fillStyle = '#6b3f22'; g.fillRect(wx + ww/2 - 3, wy, 6, wh); g.fillRect(wx, wy + wh*0.55, ww, 6);
+  g.fillStyle = 'rgba(255,246,210,.18)';
+  g.beginPath(); g.moveTo(wx, wy+wh); g.lineTo(wx+ww, wy+wh); g.lineTo(wx+ww*1.6, fy); g.lineTo(wx-ww*0.1, fy); g.closePath(); g.fill();
+  // 책장
+  bookcase(g, W*0.15, H*0.2, W*0.36, fy - H*0.2, rnd);
+  bookcase(g, W*0.84, H*0.2, W*0.16, fy - H*0.2, rnd);
+  // 간판
+  const sx = W*0.19, sw = W*0.28, sh = Math.min(H*0.08, 60), sy = H*0.06;
+  g.fillStyle = '#2f5d50'; rr(g, sx, sy, sw, sh, 10); g.fill();
+  g.strokeStyle = '#d9b45a'; g.lineWidth = 3; rr(g, sx+5, sy+5, sw-10, sh-10, 7); g.stroke();
+  g.fillStyle = '#f3d27a'; g.font = `${Math.min(sh*0.5, sw*0.12)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('창파도서관', sx + sw/2, sy + sh/2 + 1);
+  // 문
+  const dx = W*0.015, dw = W*0.11, dy = H*0.36;
+  g.fillStyle = '#5a341c'; g.fillRect(dx - 6, dy - 6, dw + 12, fy - dy + 6);
+  g.fillStyle = '#8b5a2b'; g.fillRect(dx, dy, dw, fy - dy);
+  g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 2;
+  g.strokeRect(dx + dw*0.15, dy + (fy-dy)*0.08, dw*0.7, (fy-dy)*0.35); g.strokeRect(dx + dw*0.15, dy + (fy-dy)*0.52, dw*0.7, (fy-dy)*0.38);
+  g.fillStyle = '#e8c15a'; circle(g, dx + dw*0.82, dy + (fy-dy)*0.5, Math.max(3, dw*0.05));
+  // 벽 아랫단 + 바닥
+  g.fillStyle = '#c99a66'; g.fillRect(0, fy - H*0.05, W*0.015 - 6, H*0.05); g.fillRect(W*0.135, fy - H*0.05, W*0.015, H*0.05);
+  g.fillStyle = '#9a6438'; g.fillRect(0, fy, W, H - fy);
+  g.strokeStyle = 'rgba(0,0,0,.14)'; g.lineWidth = 1;
+  let row = 0;
+  for (let y = fy; y < H; y += 16, row++) {
+    g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
+    for (let x = (row % 2) * 60; x < W; x += 120) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 16); g.stroke(); }
+  }
+  return c;
+}
+
+// ----- 사람 그리기 -----
+function limb(g, x, y, len, ang, color, w, hand) {
+  g.save(); g.translate(x, y); g.rotate(ang); g.strokeStyle = color; g.lineWidth = w; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(0, len); g.stroke();
+  if (hand) { g.fillStyle = '#f5cfa8'; circle(g, 0, len + w*0.3, w*0.6); }
+  g.restore();
+}
+function drawPerson(x, fy, u, o) {
+  const g = ctx; g.save(); g.translate(x, fy - (o.bob || 0));
+  const sw = o.moving ? Math.sin(o.walk) * 0.5 : 0;
+  const shirt = o.lib ? '#b5651d' : '#4fae8f', pants = o.lib ? '#4b3b5c' : '#5b5f6b', hair = o.lib ? '#5a3825' : '#4a3426';
+  limb(g, 0, -78*u, 34*u, -sw, mix(shirt, '#000000', 0.2), 9*u, true);
+  limb(g, -5*u, -40*u, 38*u, sw, pants, 11*u); limb(g, 5*u, -40*u, 38*u, -sw, pants, 11*u);
+  if (!o.lib) { g.fillStyle = '#f2b544'; rr(g, -o.face*18*u - 8*u, -82*u, 16*u, 36*u, 5*u); g.fill(); }
+  g.fillStyle = shirt; rr(g, -17*u, -86*u, 34*u, 50*u, 10*u); g.fill();
+  if (o.lib) { g.fillStyle = '#fff'; g.fillRect(o.face*4*u - 5*u, -76*u, 10*u, 6*u); g.fillStyle = '#f3e3c3'; g.fillRect(-3*u, -86*u, 6*u, 46*u); }
+  limb(g, 0, -78*u, 34*u, sw, shirt, 9*u, true);
+  if (!o.lib) { g.fillStyle = hair; rr(g, -22*u, -124*u, 44*u, 36*u, 16*u); g.fill(); }   // 단발머리 뒷부분
+  g.fillStyle = '#f5cfa8'; circle(g, 0, -104*u, 17*u);
+  g.fillStyle = hair; g.beginPath(); g.arc(0, -106*u, 18*u, Math.PI*1.02, Math.PI*1.98); g.fill();
+  if (!o.lib) {   // 앞머리
+    g.beginPath(); g.moveTo(-18*u, -105*u); g.quadraticCurveTo(o.face*3*u, -101*u, 18*u, -106*u);
+    g.lineTo(18*u, -114*u); g.lineTo(-18*u, -114*u); g.closePath(); g.fill();
+  }
+  if (o.lib) circle(g, 0, -126*u, 8*u);
+  const ex = o.face*5*u;
+  g.fillStyle = '#2b1d14'; circle(g, ex - 5*u, -103*u, 2*u); circle(g, ex + 5*u, -103*u, 2*u);
+  if (o.lib) { g.strokeStyle = '#333'; g.lineWidth = 1.4*u; g.beginPath(); g.arc(ex-5*u, -103*u, 4.5*u, 0, 7); g.moveTo(ex+9.5*u, -103*u); g.arc(ex+5*u, -103*u, 4.5*u, 0, 7); g.stroke(); }
+  g.fillStyle = 'rgba(240,120,120,.45)'; circle(g, ex - 10*u, -97*u, 3*u); circle(g, ex + 10*u, -97*u, 3*u);
+  g.strokeStyle = '#a0522d'; g.lineWidth = 1.5*u; g.beginPath(); g.arc(ex, -97*u, 4*u, 0.15*Math.PI, 0.85*Math.PI); g.stroke();
+  g.restore();
+}
+function drawDesk(x, fy, u) {
+  const g = ctx, w = Math.min(W*0.26, 150*u), h = 52*u;
+  g.fillStyle = '#7a4a2a'; g.fillRect(x - w/2, fy - h, w, h);
+  g.fillStyle = '#9c6338'; g.fillRect(x - w/2 - 6*u, fy - h - 7*u, w + 12*u, 8*u);
+  g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(x - w/2 + 6*u, fy - h + 8*u, w - 12*u, h - 14*u);
+  g.fillStyle = '#fff8ec'; rr(g, x - 20*u, fy - h + 14*u, 40*u, 16*u, 3*u); g.fill();
+  g.fillStyle = '#7a4a2a'; g.font = `${11*u}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('안내', x, fy - h + 22.5*u);
+  const cols = ['#c0392b','#2e86de','#27ae60'];
+  cols.forEach((c, k) => { g.fillStyle = c; g.fillRect(x + w*0.22, fy - h - 7*u - (k+1)*6*u, 26*u - k*3*u, 6*u); });
+}
+
+// ----- 1인칭 서가 통로 배경 -----
+function buildAisle() {
+  const c = mk(), g = c.getContext('2d'), rnd = rng(42);
+  g.fillStyle = '#1a0f08'; g.fillRect(0, 0, W, H);
+  const XA = Math.max(1.3, 2*L.LW + 0.75), YF = -2.1, YC = 1.9, Z0 = 0.25, ZE = 14;
+  poly(g, [P(-XA,YC,Z0), P(XA,YC,Z0), P(XA,YC,ZE), P(-XA,YC,ZE)], '#2b1b10');
+  for (let z = 1.5; z < ZE; z += 2.5) {
+    const [x, y] = P(0, YC, z), r = L.F*0.5/z;
+    const rg = g.createRadialGradient(x, y, 0, x, y, r*1.6); rg.addColorStop(0, 'rgba(255,220,150,.55)'); rg.addColorStop(1, 'rgba(255,220,150,0)');
+    g.fillStyle = rg; g.fillRect(x - r*1.6, y - r*1.6, r*3.2, r*3.2);
+  }
+  poly(g, [P(-XA,YF,Z0), P(XA,YF,Z0), P(XA,YF,ZE), P(-XA,YF,ZE)], '#3d2616');
+  const [fx0, fy0] = P(-XA, YC, ZE), [fx1, fy1] = P(XA, YF, ZE);
+  g.fillStyle = '#24160c'; g.fillRect(fx0, fy0, fx1 - fx0, fy1 - fy0);
+  const [wx0, wy0] = P(-0.45, 1.3, ZE), [wx1, wy1] = P(0.45, -0.3, ZE);
+  g.fillStyle = '#ffe3a3'; g.fillRect(wx0, wy0, wx1 - wx0, wy1 - wy0);
+  for (const side of [-1, 1]) {
+    const sx = side*XA, xb = sx - side*0.28;
+    poly(g, [P(sx,YF,Z0), P(sx,YC,Z0), P(sx,YC,ZE), P(sx,YF,ZE)], '#4a2c18');
+    for (let y = YF + 0.15; y < YC - 0.4; y += 0.55) {
+      let z = Z0;
+      while (z < ZE) {
+        const th = 0.07 + rnd()*0.09, bh = 0.3 + rnd()*0.15;
+        const fog = Math.min(0.88, Math.max(0, (z - 1) / 11));
+        poly(g, [P(xb,y,z), P(xb,y+bh,z), P(xb,y+bh,z+th), P(xb,y,z+th)], mix(BOOKPAL[Math.floor(rnd()*BOOKPAL.length)], '#1a0f08', fog));
+        z += th + 0.006 + (rnd() < 0.05 ? 0.12 : 0);
+      }
+      poly(g, [P(xb,y-0.06,Z0), P(xb,y,Z0), P(xb,y,ZE), P(xb,y-0.06,ZE)], '#6b3f22');
+    }
+    for (let z = 1.5; z < ZE; z += 3) poly(g, [P(xb,YF,z), P(xb,YC,z), P(xb,YC,z+0.12), P(xb,YF,z+0.12)], mix('#6b3f22', '#1a0f08', Math.min(0.85, z/12)));
+  }
+  const [vx, vy] = P(0, 0, ZE);
+  const fg = g.createRadialGradient(vx, vy, 0, vx, vy, Math.max(W, H)*0.25);
+  fg.addColorStop(0, 'rgba(26,15,8,.55)'); fg.addColorStop(1, 'rgba(26,15,8,0)');
+  g.fillStyle = fg; g.fillRect(0, 0, W, H);
+  const vg = g.createRadialGradient(W/2, H/2, Math.min(W, H)*0.3, W/2, H/2, Math.max(W, H)*0.75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.6)');
+  g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  return c;
+}
+
+// ===================== 장면 관리 =====================
+let scene = 'title';
+const story = { show:false, phase:'idle', px:0, t0:0, moving:false };
+const dlg = { active:false, lines:[], idx:0, chars:0, onDone:null };
+let G = null, lastStage = 0;
+
+function hideAll() { ['title','select','result','ending','confirm','pause','dialog','skipBtn','pauseBtn'].forEach(id => $(id).classList.add('hidden')); }
+function startStory() {
+  hideAll(); scene = 'story'; bgmStart(); dlg.active = false;
+  Object.assign(story, { show:true, phase:'walkin', t0:performance.now(), px:W*0.06 });
+  $('skipBtn').classList.remove('hidden');
+}
+function showSelect() {
+  hideAll(); scene = 'select'; if (AC) bgmStart(); story.show = false; dlg.active = false;
+  const grid = $('grid'); grid.innerHTML = '';
+  STAGES.forEach((s, i) => {
+    const b = document.createElement('button'); b.className = 'card';
+    const locked = i > save.unlocked, best = save.best[i];
+    b.disabled = locked; b.style.setProperty('--c', s.color);
+    b.innerHTML = `<div class="code">${s.code}</div><div class="nm">${s.name}</div><div class="ds">${s.desc}</div>` +
+      `<div class="bt">${locked ? '🔒 잠김' : best ? `최고 ${best.rank} · ${best.score.toLocaleString()}` : '✨ NEW'}</div><div class="lv">Lv.${i+1}</div>`;
+    b.onclick = () => { b.blur(); startStage(i); };
+    grid.appendChild(b);
+  });
+  updateMenus();
+  $('funNote').classList.toggle('hidden', save.unlocked < 10);
+  $('select').classList.remove('hidden');
+}
+
+// ----- 대화창 -----
+function startDialog(lines, onDone) { Object.assign(dlg, { active:true, lines, idx:0, chars:0, onDone }); $('dialog').classList.remove('hidden'); renderDlg(); }
+function renderDlg() {
+  const [who, txt] = dlg.lines[dlg.idx], ch = Array.from(txt);
+  $('dlgName').textContent = who; $('dlgName').className = who === '나' ? 'me' : '';
+  $('dlgText').textContent = ch.slice(0, Math.floor(dlg.chars)).join('');
+  $('dlgNext').style.visibility = dlg.chars >= ch.length ? 'visible' : 'hidden';
+}
+function updateDialog(dt) {
+  if (!dlg.active) return;
+  const n = Array.from(dlg.lines[dlg.idx][1]).length;
+  if (dlg.chars < n) { dlg.chars = Math.min(n, dlg.chars + dt*38); renderDlg(); }
+}
+function advance() {
+  if (!dlg.active) return;
+  const n = Array.from(dlg.lines[dlg.idx][1]).length;
+  if (dlg.chars < n) { dlg.chars = n; renderDlg(); return; }
+  dlg.idx++;
+  if (dlg.idx >= dlg.lines.length) { dlg.active = false; $('dialog').classList.add('hidden'); const f = dlg.onDone; dlg.onDone = null; if (f) f(); }
+  else { dlg.chars = 0; renderDlg(); }
+}
+function speaker() { return dlg.active ? dlg.lines[dlg.idx][0] : ''; }
+
+// ----- 도서관 장면 그리기 -----
+function drawStory(pf) {
+  if (!libBg) libBg = buildLib();
+  ctx.drawImage(libBg, 0, 0, W, H);
+  const u = Math.min(H*0.3, W*0.3) / 125, fy = H*0.8, deskX = W*0.7;
+  const bounce = who => speaker() === who ? Math.abs(Math.sin(pf/110)) * 3*u : 0;
+  drawPerson(deskX, fy - 8*u, u, { lib:true, face:-1, bob: bounce('사서') });
+  drawDesk(deskX, fy, u);
+  let fade = 0;
+  if (story.show) {
+    if (story.phase === 'walkin') {
+      const k = Math.min(1, (pf - story.t0) / 1800);
+      story.px = W*0.06 + (W*0.48 - W*0.06) * k; story.moving = k < 1;
+      if (k >= 1) { story.phase = 'talk'; startDialog(SCRIPT, () => { story.phase = 'walkout'; story.t0 = performance.now(); }); }
+    } else if (story.phase === 'walkout') {
+      const k = (pf - story.t0) / 1500;
+      story.px = W*0.48 + k*W*0.6; story.moving = true; fade = Math.min(1, k);
+      if (k >= 1) { story.phase = 'idle'; showSelect(); }
+    } else { story.moving = false; story.px = W*0.48; }
+    drawPerson(story.px, fy, u, { lib:false, face:1, walk: pf/110, moving: story.moving, bob: bounce('나') });
+  }
+  if (scene === 'title' || scene === 'select' || scene === 'result' || scene === 'ending') { ctx.fillStyle = 'rgba(20,10,5,.5)'; ctx.fillRect(0, 0, W, H); }
+  if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${fade})`; ctx.fillRect(0, 0, W, H); }
+}
+
+// ===================== 리듬게임 =====================
+function startStage(i) {
+  initAudio(); bgmStop(); hideAll(); scene = 'play'; lastStage = i;
+  $('pauseBtn').classList.remove('hidden');
+  const song = buildSong(i);
+  G = {
+    i, song, notes: song.notes.map(n => Object.assign({}, n, { state:0 })), head:0, evIdx:0,
+    startAt: AC.currentTime + 0.4 + song.bar, lat: AC.outputLatency || AC.baseLatency || 0,
+    stats: { perfect:0, good:0, miss:0 }, combo:0, maxCombo:0, score:0,
+    pressed: [false,false,false], holding: [null,null,null], flash: [-1e9,-1e9,-1e9],
+    fly: [], lastJ: null, paused:false, ended:false,
+    hands: [{ lane:0, pos:0.5, x:null, pushT:-1e9 }, { lane:2, pos:1.5, x:null, pushT:-1e9 }],
+    shelf: new Array(song.notes.length).fill(null), placedT: new Array(song.notes.length).fill(-1e9), shelfH: [], placed: 0,
+  };
+  // 책마다 서가 자리를 정해요: 청구기호 순서대로! (다 꽂으면 번호순으로 정리됨)
+  const order = G.notes.map((n, k) => k).sort((a, b) => G.notes[a].label < G.notes[b].label ? -1 : G.notes[a].label > G.notes[b].label ? 1 : a - b);
+  order.forEach((k, s) => { G.notes[k].slot = s; G.shelfH[s] = 0.7 + (parseInt(G.notes[k].label.slice(-1)) || 0) * 0.03; });
+}
+
+// ----- 위쪽 서가: 리듬을 맞춘 책이 날아가서 꽂혀요 -----
+function shelfGeo() {
+  const fs = Math.max(15, Math.min(22, W*0.03));
+  const x = 14, y = 16 + fs*1.6 + 12, w = W - 28, h = Math.min(H*0.11, 76), n = G.shelf.length;
+  let rows = 1; while (rows < 4 && w / Math.ceil(n / rows) < 7) rows++;
+  const per = Math.ceil(n / rows), pad = 4;
+  return { x, y, w, h, rows, per, pad, rowH: (h - pad*(rows + 1)) / rows, bw: (w - pad*2) / per };
+}
+function slotRect(s, sg) {
+  const r = Math.floor(s / sg.per), c = s % sg.per, hh = sg.rowH * G.shelfH[s];
+  return [sg.x + sg.pad + c*sg.bw + 0.5, sg.y + sg.pad + r*(sg.rowH + sg.pad) + sg.rowH - hh, Math.max(1, sg.bw - 1), hh];
+}
+function placeBook(n, l) {
+  const [x, y] = P((l - MID)*L.LW, -1 + 0.45*L.LW, 1);
+  G.fly.push({ x, y, slot:n.slot, color:n.color, t0:performance.now() });
+}
+function drawShelf(pf) {
+  const g = ctx, sg = shelfGeo();
+  g.fillStyle = '#6b3f22'; rr(g, sg.x - 5, sg.y - 5, sg.w + 10, sg.h + 10, 8); g.fill();
+  g.fillStyle = '#2a180d'; g.fillRect(sg.x, sg.y, sg.w, sg.h);
+  for (let r = 0; r < sg.rows; r++) { g.fillStyle = '#8a5530'; g.fillRect(sg.x, sg.y + sg.pad + r*(sg.rowH + sg.pad) + sg.rowH, sg.w, sg.pad); }
+  for (let s = 0; s < G.shelf.length; s++) {
+    const [x, y, w, h] = slotRect(s, sg);
+    if (G.shelf[s]) {
+      g.fillStyle = G.shelf[s]; g.fillRect(x, y, w, h);
+      const k = (pf - G.placedT[s]) / 350;
+      if (k < 1) { g.fillStyle = `rgba(255,243,196,${0.85*(1 - k)})`; g.fillRect(x, y, w, h); }
+    } else { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x, y, w, h); }
+  }
+  // 날아가는 책
+  G.fly = G.fly.filter(f => {
+    const k = Math.min(1, (pf - f.t0) / 380), e = 1 - Math.pow(1 - k, 3);
+    const [tx, ty, tw, th] = slotRect(f.slot, sg);
+    const w0 = L.laneW*0.6, h0 = L.laneW*0.95;
+    const w = w0 + (tw - w0)*e, h = h0 + (th - h0)*e;
+    const cx = f.x + (tx + tw/2 - f.x)*e, cy = f.y + (ty + th/2 - f.y)*e - Math.sin(Math.PI*k)*H*0.08;
+    g.fillStyle = f.color; rr(g, cx - w/2, cy - h/2, w, h, Math.min(w, h)*0.1); g.fill();
+    if (k >= 1) { G.shelf[f.slot] = f.color; G.placedT[f.slot] = pf; G.placed++; return false; }
+    return true;
+  });
+  const fs = Math.max(13, Math.min(18, W*0.025));
+  g.font = `${fs}px ${FONT}`; g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,240,210,.9)';
+  g.fillText(`📚 ${G.placed} / ${G.shelf.length}권`, W - 16, sg.y - fs*1.1);
+  return sg.y + sg.h + 5;
+}
+const clk = { ac:-1, pf:0 };
+function nowAC() {
+  const a = AC.currentTime, p = performance.now() / 1000;
+  if (G.paused || AC.state !== 'running') return a;
+  if (a !== clk.ac) { clk.ac = a; clk.pf = p; }
+  return a + Math.min(0.05, p - clk.pf);
+}
+function songTime() { return nowAC() - G.startAt - G.lat; }
+
+function judge(kind, lane) {
+  G.stats[kind]++;
+  if (kind === 'miss') G.combo = 0;
+  else { G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo); G.score += Math.round((kind === 'perfect' ? 300 : 150) * (1 + Math.min(G.combo, 100)/200)); }
+  G.lastJ = { kind, t0: performance.now() };
+}
+function hitSound(l, t) {
+  const s = G.song, b = Math.max(0, Math.min(s.BARS - 1, Math.floor(t / s.bar)));
+  const [off, mn] = s.chordAt(b), m = s.root + 12 + off + [0, mn ? 3 : 4, 7][l], T = AC.currentTime;
+  tone(T, 'triangle', mtof(m), 0.35, 0.22); tone(T, 'sine', mtof(m + 12), 0.2, 0.07); noise(T, 0.03, 'highpass', 4000, 0.07);
+}
+function press(l) {
+  if (scene !== 'play' || !G || G.paused || G.pressed[l]) return;
+  G.pressed[l] = true;
+  // 왼쪽은 왼손, 오른쪽은 오른손, 가운데는 쉬고 있는 손이 눌러요
+  const H0 = G.hands[0], H1 = G.hands[1];
+  const hi = l === 0 ? 0 : l === LANES - 1 ? 1 : G.holding[H0.lane] ? 1 : G.holding[H1.lane] ? 0 : (H0.pushT <= H1.pushT ? 0 : 1);
+  const h = G.hands[hi]; h.lane = l; h.pos = l; h.pushT = performance.now();
+  const t = songTime(), N = G.notes; let target = null;
+  for (let k = G.head; k < N.length; k++) {
+    const n = N[k]; if (n.t - t > WIN) break;
+    if (n.state === 0 && n.lane === l && Math.abs(n.t - t) <= WIN) { target = n; break; }
+  }
+  if (!target) return;
+  const d = Math.abs(target.t - t), kind = d <= PERF ? 'perfect' : d <= GOOD ? 'good' : 'miss';
+  judge(kind, l);
+  if (kind === 'miss') { target.state = 2; if (target.dur > 0) judge('miss', l); return; }
+  hitSound(l, target.t); G.flash[l] = performance.now();
+  if (target.dur > 0) { target.state = 1; G.holding[l] = target; }
+  else { target.state = 2; placeBook(target, l); }
+}
+function release(l) {
+  if (!G) return;
+  G.pressed[l] = false;
+  const n = G.holding[l]; if (!n || scene !== 'play') return;
+  G.holding[l] = null; n.state = 2;
+  if (songTime() >= n.t + n.dur - 0.15) { judge('perfect', l); G.flash[l] = performance.now(); placeBook(n, l); }
+  else judge('miss', l);
+}
+
+function updatePlay() {
+  if (!G || G.paused) return;
+  const ac = AC.currentTime, ev = G.song.ev;
+  while (G.evIdx < ev.length && G.startAt + ev[G.evIdx].t < ac + 0.2) {
+    const e = ev[G.evIdx++], T = G.startAt + e.t;
+    if (T > ac - 0.03) e.f(Math.max(T, ac));
+  }
+  const t = songTime(), N = G.notes;
+  while (G.head < N.length && N[G.head].state === 2) G.head++;
+  for (let k = G.head; k < N.length; k++) {
+    const n = N[k]; if (n.t - t > WIN) break;
+    if (n.state === 0 && t - n.t > GOOD) { n.state = 2; judge('miss', n.lane); if (n.dur > 0) judge('miss', n.lane); }
+    else if (n.state === 1 && t >= n.t + n.dur) {
+      n.state = 2; G.holding[n.lane] = null; judge('perfect', n.lane); G.flash[n.lane] = performance.now();
+      placeBook(n, n.lane);
+    }
+  }
+  if (!G.ended && t > G.song.lastEnd + 1.6) { G.ended = true; finishStage(); }
+}
+
+function drawBook(X, baseY, Z, color, label, alpha, glow) {
+  const g = ctx, w = 0.6*L.LW, h = 0.95*L.LW;
+  const [x0, y1] = P(X - w/2, baseY, Z), [x1, y0] = P(X + w/2, baseY + h, Z);
+  const bw = x1 - x0, bh = y1 - y0; if (bw < 2 || alpha <= 0) return;
+  g.globalAlpha = Math.min(1, alpha);
+  if (glow) { g.shadowColor = '#fff3c4'; g.shadowBlur = 28; }
+  g.fillStyle = color; rr(g, x0, y0, bw, bh, bw*0.08); g.fill(); g.shadowBlur = 0;
+  g.fillStyle = 'rgba(0,0,0,.2)'; g.fillRect(x0, y0 + bh*0.02, bw*0.1, bh*0.96);
+  g.fillStyle = 'rgba(255,215,120,.9)'; g.fillRect(x0 + bw*0.12, y0 + bh*0.1, bw*0.76, bh*0.045); g.fillRect(x0 + bw*0.12, y0 + bh*0.85, bw*0.76, bh*0.045);
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x0 + bw*0.3, y0 + bh*0.24, bw*0.4, bh*0.03); g.fillRect(x0 + bw*0.24, y0 + bh*0.32, bw*0.52, bh*0.03);
+  g.fillStyle = '#fffaf0'; rr(g, x0 + bw*0.14, y0 + bh*0.5, bw*0.72, bh*0.25, bw*0.05); g.fill();
+  if (bw > 30) { g.fillStyle = '#3b2a1e'; g.font = `${Math.floor(bw*0.2)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label, x0 + bw/2, y0 + bh*0.63); }
+  g.globalAlpha = 1;
+}
+function drawHand(x, y, s, left) {
+  const g = ctx;
+  g.fillStyle = '#4fae8f'; g.fillRect(x - s*0.55, y + s*0.55, s*1.1, H - y + 40);
+  g.fillStyle = '#eef3fb'; g.fillRect(x - s*0.58, y + s*0.5, s*1.16, s*0.16);
+  g.fillStyle = '#f5cfa8'; g.strokeStyle = '#d9a77f'; g.lineWidth = 2;
+  for (let k = 0; k < 4; k++) { rr(g, x - s*0.42 + k*s*0.215, y - s*0.42 + Math.abs(k - 1.5)*s*0.06, s*0.19, s*0.55, s*0.09); g.fill(); g.stroke(); }
+  const tx = left ? x + s*0.42 : x - s*0.62;
+  rr(g, tx, y - s*0.02, s*0.2, s*0.42, s*0.1); g.fill(); g.stroke();
+  rr(g, x - s*0.45, y - s*0.05, s*0.9, s*0.62, s*0.18); g.fill(); g.stroke();
+}
+
+function drawPlay() {
+  if (!aisleBg) aisleBg = buildAisle();
+  const g = ctx, pf = performance.now();
+  g.drawImage(aisleBg, 0, 0, W, H);
+  if (!G) return;
+  const st = STAGES[G.i], t = songTime(), A = G.song.approach, LW = L.LW, beat = G.song.beat;
+  const pulse = t >= 0 && t < G.song.lastEnd ? Math.pow(1 - (t / beat) % 1, 4) : 0;
+  g.fillStyle = hexA(st.color, 0.05 + 0.06*pulse); g.fillRect(0, 0, W, H);
+
+  // 책 수레(레인)
+  const X0 = -LANES/2*LW, X1 = LANES/2*LW, ZF = 4.4, e = 0.05;
+  const pg = g.createLinearGradient(0, L.judgeY, 0, L.horizonY);
+  pg.addColorStop(0, '#8b5a33'); pg.addColorStop(1, '#2e1c10');
+  poly(g, [P(X0-e,-1,0.95), P(X1+e,-1,0.95), P(X1+e,-1,ZF), P(X0-e,-1,ZF)], pg);
+  for (let l = 0; l < LANES; l++) {
+    if (!G.pressed[l]) continue;
+    const lg = g.createLinearGradient(0, L.judgeY, 0, L.horizonY);
+    lg.addColorStop(0, hexA(st.color, 0.5)); lg.addColorStop(1, hexA(st.color, 0));
+    poly(g, [P(X0+l*LW,-1,1), P(X0+(l+1)*LW,-1,1), P(X0+(l+1)*LW,-1,ZF), P(X0+l*LW,-1,ZF)], lg);
+  }
+  g.strokeStyle = 'rgba(255,235,200,.18)'; g.lineWidth = 2;
+  for (let k = 0; k <= LANES; k++) { const a = P(X0 + k*LW, -1, 1), b = P(X0 + k*LW, -1, ZF); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); }
+  poly(g, [P(X0-e,-1,0.95), P(X1+e,-1,0.95), P(X1+e,-1.2,0.95), P(X0-e,-1.2,0.95)], '#5c3920');
+
+  // 꽂을 자리(판정선)
+  for (let l = 0; l < LANES; l++) {
+    const X = (l - MID)*LW, w = 0.6*LW, h = 0.95*LW;
+    const [x0, y1] = P(X - w/2, -1, 1), [x1, y0] = P(X + w/2, -1 + h, 1);
+    g.setLineDash([6, 5]); g.strokeStyle = G.pressed[l] ? 'rgba(255,240,200,.85)' : 'rgba(255,240,200,.3)'; g.lineWidth = 2;
+    rr(g, x0, y0, x1 - x0, y1 - y0, 6); g.stroke(); g.setLineDash([]);
+    const [kx, ky] = P(X, -1.1, 0.95);
+    g.fillStyle = G.pressed[l] ? '#fff3c4' : 'rgba(255,240,200,.6)'; g.font = `${Math.floor(L.laneW*0.2)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(KEYLABEL[l], kx, ky);
+  }
+  const [jx0, jy] = P(X0, -1, 1), [jx1] = P(X1, -1, 1);
+  g.strokeStyle = `rgba(255,232,176,${0.55 + 0.45*pulse})`; g.lineWidth = 3 + 3*pulse;
+  g.beginPath(); g.moveTo(jx0, jy); g.lineTo(jx1, jy); g.stroke();
+
+  // 노트(책)
+  const vis = [];
+  for (let k = G.head; k < G.notes.length; k++) { const n = G.notes[k]; if (n.t - t > A*1.15) break; if (n.state !== 2) vis.push(n); }
+  for (const n of vis) if (n.dur > 0) {
+    const ph = n.state === 1 ? 0 : Math.max(-0.1, (n.t - t)/A), pt = Math.min(1.15, (n.t + n.dur - t)/A);
+    if (pt <= ph) continue;
+    const X = (n.lane - MID)*LW, Zh = 1 + 3*ph, Zt = 1 + 3*pt;
+    poly(g, [P(X-0.2*LW,-1,Zh), P(X+0.2*LW,-1,Zh), P(X+0.2*LW,-1,Zt), P(X-0.2*LW,-1,Zt)], hexA(st.color, n.state === 1 ? 0.9 : 0.5));
+    const [bx0, by1] = P(X - 0.25*LW, -1, Zt), [bx1, by0] = P(X + 0.25*LW, -1 + 0.3*LW, Zt);
+    g.fillStyle = 'rgba(230,230,240,.85)'; rr(g, bx0, by0, bx1 - bx0, by1 - by0, 3); g.fill();
+  }
+  vis.sort((a, b) => b.t - a.t);
+  for (const n of vis) {
+    const p = n.state === 1 ? 0 : (n.t - t)/A, Z = Math.max(0.7, 1 + 3*p);
+    const alpha = Math.min(1, (ZF - Z)/0.9) * (p < 0 ? Math.max(0, 1 + p*8) : 1);
+    drawBook((n.lane - MID)*LW, -1, Z, n.color, n.label, alpha, n.state === 1);
+  }
+  // 반짝임
+  for (let l = 0; l < LANES; l++) {
+    const k = (pf - G.flash[l]) / 260; if (k >= 1) continue;
+    const [x, y] = P((l - MID)*LW, -1 + 0.45*LW, 1), r = L.laneW*(0.5 + 0.6*k);
+    const rg = g.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, `rgba(255,243,196,${0.7*(1-k)})`); rg.addColorStop(1, 'rgba(255,243,196,0)');
+    g.fillStyle = rg; g.fillRect(x - r, y - r, r*2, r*2);
+  }
+  // 손
+  G.hands.forEach((h, hi) => {
+    const tx = P((h.pos - MID)*LW, -1, 1)[0];
+    h.x = h.x === null ? tx : h.x + (tx - h.x)*0.45;
+    const tk = (pf - h.pushT)/170;
+    let push = tk < 0.3 ? tk/0.3 : tk < 1 ? 1 - (tk - 0.3)/0.7 : 0;
+    if (G.holding[h.lane]) push = 1;
+    const yRest = H + L.laneW*0.05, yPush = L.judgeY + L.laneW*0.5;
+    drawHand(h.x, yRest + (yPush - yRest)*push, L.laneW*0.55, hi === 0);
+  });
+
+  // 화면 정보(HUD)
+  const fs = Math.max(15, Math.min(22, W*0.03));
+  g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(0, 0, W, 6);
+  g.fillStyle = st.color; g.fillRect(0, 0, W*Math.max(0, Math.min(1, t/G.song.lastEnd)), 6);
+  g.font = `${fs}px ${FONT}`; g.textBaseline = 'middle'; g.textAlign = 'left';
+  const tag = `${st.code} ${st.name}`, tw = g.measureText(tag).width;
+  g.fillStyle = st.color; rr(g, 14, 16, tw + 24, fs*1.6, 10); g.fill();
+  g.fillStyle = '#fff'; g.fillText(tag, 26, 16 + fs*0.82);
+  g.textAlign = 'center'; g.fillStyle = 'rgba(255,240,210,.85)'; g.fillText(`점수 ${G.score.toLocaleString()}`, W/2, 16 + fs*0.82);
+  const shelfBottom = drawShelf(pf);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (G.combo >= 3) {
+    const big = Math.min(64, H*0.08), cy = Math.max(L.horizonY - big*0.9, shelfBottom + big*0.6);
+    g.fillStyle = `rgba(255,243,196,${0.75 + 0.25*pulse})`; g.font = `${big}px ${FONT}`;
+    g.fillText(G.combo, W/2, cy);
+    g.font = `${big*0.3}px ${FONT}`; g.fillText('콤보', W/2, cy + big*0.65);
+  }
+  if (G.lastJ) {
+    const k = (pf - G.lastJ.t0)/550;
+    if (k < 1) {
+      const J = { perfect:['완벽!','#ffd166'], good:['좋아요','#7bdff2'], miss:['놓쳤어요','#ef476f'] }[G.lastJ.kind];
+      const s = Math.min(46, L.laneW*0.36) * (k < 0.15 ? 0.8 + k*1.4 : 1);
+      g.globalAlpha = 1 - k; g.font = `${s}px ${FONT}`; g.lineWidth = 5; g.strokeStyle = 'rgba(0,0,0,.6)';
+      const y = L.judgeY - L.laneW*1.45 - k*12;
+      g.strokeText(J[0], W/2, y); g.fillStyle = J[1]; g.fillText(J[0], W/2, y); g.globalAlpha = 1;
+    }
+  }
+  if (t < beat) {
+    const n = Math.ceil(-t / beat), txt = t >= 0 ? '시작!' : n > 3 ? '준비' : String(n);
+    const s = Math.min(90, H*0.12);
+    g.font = `${s}px ${FONT}`; g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,.6)';
+    const y = (L.horizonY + L.judgeY)/2;
+    g.strokeText(txt, W/2, y); g.fillStyle = '#fff3c4'; g.fillText(txt, W/2, y);
+    if (t < 0) { g.font = `${s*0.25}px ${FONT}`; g.fillStyle = 'rgba(255,240,210,.8)'; g.fillText('← ↓ →  (긴 책은 꾹!)', W/2, y + s*0.75); }
+  }
+}
+
+// ----- 결과 -----
+function finishStage() {
+  const s = G.stats, total = s.perfect + s.good + s.miss;
+  const acc = total ? (s.perfect + s.good*0.6) / total : 0;
+  const rank = acc >= 0.95 ? 'S' : acc >= 0.88 ? 'A' : acc >= 0.75 ? 'B' : acc >= 0.5 ? 'C' : 'F';
+  const clear = rank !== 'F', i = G.i, st = STAGES[i];
+  const fun = save.unlocked >= 10;   // 이미 다 깬 상태 = 재미 모드 (기록 고정)
+  if (clear && !fun) {
+    save.unlocked = Math.max(save.unlocked, i + 1);
+    const b = save.best[i]; if (!b || G.score > b.score) save.best[i] = { score:G.score, rank };
+    persist();
+  }
+  const LINES = {
+    S:'와, 완벽해요! 책들이 반짝반짝 빛나요! ✨', A:'아주 깔끔하게 정리됐어요! 최고예요!',
+    B:'잘했어요! 거의 다 제자리에 있네요.', C:'휴, 겨우 정리됐어요. 다음엔 더 잘할 수 있을 거예요!',
+    F:'아이고, 책이 아직 뒤죽박죽이에요… 한 번 더 해볼까요? 💪',
+  };
+  // 마지막 서가(900)를 깨면 → 결과창 대신 바로 엔딩!
+  if (clear && i === 9 && !fun) {
+    const last = { rank, score:G.score };
+    hideAll(); scene = 'story'; bgmStart();
+    Object.assign(story, { show:true, phase:'idle', px:W*0.48 });
+    startDialog(makeEnding(), () => showEnding(last));
+    return;
+  }
+  let say = LINES[rank];
+  if (clear && i < 9) say += ` 다음은 ${STAGES[i+1].code} ${STAGES[i+1].name} 서가예요!`;
+  const rc = { S:'#e0a400', A:'#2a9d8f', B:'#3f7fd6', C:'#8a6a50', F:'#d63a46' }[rank];
+  $('resTitle').innerHTML = `<span class="badge" style="--c:${st.color}">${st.code} ${st.name}</span><h2>${clear ? '서가 정리 완료!' : '정리 실패…'}</h2>`;
+  $('resRank').textContent = rank; $('resRank').style.color = rc;
+  $('resStats').innerHTML = [['점수', G.score.toLocaleString()], ['정확도', (acc*100).toFixed(1) + '%'], ['최대 콤보', G.maxCombo],
+    ['완벽', s.perfect], ['좋아요', s.good], ['놓침', s.miss]].map(([a, b]) => `<div>${a}<b>${b}</b></div>`).join('');
+  if (fun) say += ' <br>🎮 재미 모드라 기록과 등급은 바뀌지 않아요.';
+  $('resSay').innerHTML = `<b>사서</b>${say}`;
+  $('btnNext').classList.toggle('hidden', !(clear && i < 9));
+  hideAll(); scene = 'result'; bgmStart();
+  Object.assign(story, { show:true, phase:'idle', px:W*0.48 });
+  $('result').classList.remove('hidden');
+}
+
+// ----- 엔딩 -----
+// 10개 서가의 최고 등급을 점수로 바꿔 평균을 내요: S=4, A=3, B=2, C=1
+const TITLES = [
+  { min:3.5, name:'명예 사서',     icon:'🏅', say:'오늘부터 당신은 창파도서관의 명예 사서예요! 🎉' },
+  { min:2.5, name:'사서',          icon:'📘', say:'오늘부터 당신은 창파도서관의 사서예요! 정말 든든해요. 😊' },
+  { min:1.5, name:'견습 사서',     icon:'📗', say:'오늘부터 당신은 창파도서관의 견습 사서예요! 조금만 더 연습하면 금방 늘 거예요.' },
+  { min:0,   name:'도서관 도우미', icon:'📒', say:'오늘부터 당신은 창파도서관의 도우미예요! 도와줘서 정말 고마워요.' },
+];
+const RANK_PT = { S:4, A:3, B:2, C:1 };
+function getTitle() {
+  let sum = 0; for (let i = 0; i < 10; i++) sum += RANK_PT[save.best[i] && save.best[i].rank] || 0;
+  const avg = sum / 10;
+  return { avg, t: TITLES.find(x => avg >= x.min) };
+}
+function makeEnding() {
+  const { t } = getTitle(), top = t === TITLES[0];
+  return [
+    ['사서', '와… 900 역사 서가까지 전부 정리됐어요!'],
+    ['사서', '000 총류부터 900 역사까지, 모든 책이 청구기호 순서대로 제자리를 찾았어요. 📚'],
+    ['나',   '휴, 힘들었지만 정말 재밌었어요!'],
+    ['사서', '그동안 정리한 기록을 볼까요? 음…'],
+    ['사서', '정말 고마워요. ' + t.say],
+    top ? ['사서', '또 책이 뒤죽박죽되면… 그때도 꼭 와 줄 거죠? 😊']
+        : ['사서', '그런데… 처음부터 다시 도전하면 명예 사서도 될 수 있어요! S, A 등급을 많이 모아 보세요. 💪'],
+  ];
+}
+function showEnding(last) {
+  hideAll(); scene = 'ending';
+  $('endLogo').textContent = last ? '🎉' : '🏅';
+  $('endHead').textContent = last ? '모든 서가 정리 완료!' : '내 등급';
+  $('endSub').textContent = last ? '000 총류부터 900 역사까지 모든 책이 제자리를 찾았어요' : '10개 서가의 최고 기록으로 정해진 칭호예요';
+  const { avg, t } = getTitle(), top = t === TITLES[0];
+  const total = Object.values(save.best).reduce((a, b) => a + b.score, 0);
+  $('endBadge').innerHTML = `${t.icon} 창파도서관 <b>${t.name}</b>`;
+  $('endStats').innerHTML = `<div class="statgrid">` +
+    [last ? ['마지막 서가', `${last.rank} 등급`] : ['클리어한 서가', '10 / 10'], ['평균 등급 점수', `${avg.toFixed(1)} / 4`], ['최고점 합계', total.toLocaleString()]]
+      .map(([a, b]) => `<div>${a}<b>${b}</b></div>`).join('') + `</div>`;
+  $('endRecord').innerHTML = STAGES.map((s, i) => {
+    const b = save.best[i];
+    return `<div style="--c:${s.color}">${s.code} ${s.name}<b>${b ? b.rank : '-'}</b></div>`;
+  }).join('');
+  $('endTiers').innerHTML = TITLES.slice().reverse().map(x => `<span class="${x === t ? 'on' : ''}">${x.icon} ${x.name}</span>`).join('');
+  $('endChallenge').textContent = top ? '' : "'처음부터 다시 하기'로 명예 사서도 도전해 보세요! 🏅 (S·A 등급을 많이 받으면 돼요)";
+  $('ending').classList.remove('hidden');
+}
+
+// ----- 멈춤 -----
+function pauseGame() {
+  if (scene !== 'play' || !G || G.paused || G.ended) return;
+  for (let l = 0; l < LANES; l++) if (G.pressed[l]) release(l);
+  G.paused = true; AC.suspend();
+  $('pause').classList.remove('hidden');
+}
+function resumeGame() { $('pause').classList.add('hidden'); AC.resume().then(() => { if (G) G.paused = false; }); }
+function leavePlay() { if (AC && AC.state === 'suspended') AC.resume(); G = null; }
+
+// ===================== 입력 =====================
+addEventListener('keydown', e => {
+  const l = KEYS.indexOf(e.code);
+  if (scene === 'play') {
+    if (l >= 0) { e.preventDefault(); if (!e.repeat) press(l); }
+    else if (e.code === 'Escape' || e.code === 'KeyP') { if (G && G.paused) resumeGame(); else pauseGame(); }
+    return;
+  }
+  if (scene === 'story' && dlg.active && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); advance(); }
+});
+addEventListener('keyup', e => { const l = KEYS.indexOf(e.code); if (l >= 0 && scene === 'play') release(l); });
+const ptrLane = new Map();
+cv.addEventListener('pointerdown', e => {
+  if (scene === 'story') { advance(); return; }
+  if (scene !== 'play') return;
+  e.preventDefault();
+  const l = Math.max(0, Math.min(LANES - 1, Math.floor((e.clientX - (L.cx - LANES/2*L.laneW)) / L.laneW)));
+  ptrLane.set(e.pointerId, l); press(l);
+});
+const ptrUp = e => { if (!ptrLane.has(e.pointerId)) return; const l = ptrLane.get(e.pointerId); ptrLane.delete(e.pointerId); release(l); };
+cv.addEventListener('pointerup', ptrUp); cv.addEventListener('pointercancel', ptrUp);
+$('dialog').addEventListener('click', advance);
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+
+$('btnStart').onclick = () => { initAudio(); startStory(); };
+// ----- 목록(메뉴) 버튼 -----
+function allCleared() { return save.unlocked >= 10; }
+function updateMenus() {
+  document.querySelectorAll('.mGrade').forEach(b => { b.disabled = !allCleared(); b.textContent = (allCleared() ? '🏅' : '🔒') + ' 내 등급 보기'; });
+  document.querySelectorAll('.menu-lock').forEach(p => p.classList.toggle('hidden', allCleared()));
+}
+function showTitle() { hideAll(); scene = 'title'; story.show = false; dlg.active = false; updateMenus(); $('title').classList.remove('hidden'); }
+const onAll = (cls, fn) => document.querySelectorAll(cls).forEach(b => b.addEventListener('click', e => { e.currentTarget.blur(); initAudio(); fn(); }));
+onAll('.mGrade', () => { if (allCleared()) showEnding(null); });
+onAll('.mShelf', () => showSelect());
+onAll('.mHome',  () => showTitle());
+$('skipBtn').onclick = () => { dlg.active = false; showSelect(); };
+$('pauseBtn').onclick = e => { e.currentTarget.blur(); pauseGame(); };
+$('btnResume').onclick = resumeGame;
+$('btnRetry2').onclick = () => { const i = G.i; leavePlay(); startStage(i); };
+$('btnQuit').onclick = () => { leavePlay(); showSelect(); };
+$('btnRetry').onclick = () => startStage(lastStage);
+$('btnNext').onclick = () => startStage(lastStage + 1);
+$('btnList').onclick = () => { G = null; showSelect(); };
+// ----- 기록 초기화 (경고창으로 한 번 더 물어봐요) -----
+let confirmYes = null;
+function askReset(next) {
+  confirmYes = () => { save = { unlocked:0, best:{} }; persist(); updateMenus(); next(); };
+  $('confirm').classList.remove('hidden');
+}
+$('btnConfirmYes').onclick = () => { $('confirm').classList.add('hidden'); const f = confirmYes; confirmYes = null; if (f) f(); };
+$('btnConfirmNo').onclick = () => { $('confirm').classList.add('hidden'); confirmYes = null; };
+$('btnRestart').onclick = () => askReset(showSelect);   // 등급 바꾸기: 초기화 → 000 서가부터 새로
+$('btnEndList').onclick = () => showSelect();           // 재미로 다시 하기: 기록 그대로
+updateMenus();
+// 브라우저는 처음 클릭(또는 키) 전에는 소리를 못 내요 → 첫 클릭 때 처음 화면 음악 시작
+const firstTouch = () => { if (scene !== 'play') bgmStart(); removeEventListener('pointerdown', firstTouch); removeEventListener('keydown', firstTouch); };
+addEventListener('pointerdown', firstTouch); addEventListener('keydown', firstTouch);
+
+// ===================== 메인 루프 =====================
+let lastPf = performance.now();
+function loop() {
+  const pf = performance.now(), dt = Math.min(0.05, (pf - lastPf)/1000); lastPf = pf;
+  if (scene === 'play') { updatePlay(); drawPlay(); }
+  else drawStory(pf);
+  updateDialog(dt); bgmTick();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
